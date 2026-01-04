@@ -466,6 +466,37 @@ impl HistoryManager {
         Ok(())
     }
 
+    pub async fn delete_all_entries(&self) -> Result<()> {
+        let conn = self.get_connection()?;
+
+        // 1. Get all file names to delete associated files
+        let mut stmt = conn.prepare("SELECT file_name FROM transcription_history")?;
+        let file_names_iter = stmt.query_map([], |row| row.get::<_, String>(0))?;
+
+        for file_name_result in file_names_iter {
+            if let Ok(file_name) = file_name_result {
+                let file_path = self.get_audio_file_path(&file_name);
+                if file_path.exists() {
+                    if let Err(e) = fs::remove_file(&file_path) {
+                        error!("Failed to delete audio file {}: {}", file_name, e);
+                    }
+                }
+            }
+        }
+
+        // 2. Delete all entries from database
+        conn.execute("DELETE FROM transcription_history", [])?;
+
+        debug!("Deleted all history entries");
+
+        // 3. Emit update event
+        if let Err(e) = self.app_handle.emit("history-updated", ()) {
+            error!("Failed to emit history-updated event: {}", e);
+        }
+
+        Ok(())
+    }
+
     fn format_timestamp_title(&self, timestamp: i64) -> String {
         if let Some(utc_datetime) = DateTime::from_timestamp(timestamp, 0) {
             // Convert UTC to local timezone

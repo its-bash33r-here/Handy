@@ -7,6 +7,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { commands, type HistoryEntry } from "@/bindings";
 import { formatDateTime } from "@/utils/dateFormat";
+import { toast } from "sonner";
 
 interface OpenRecordingsButtonProps {
   onClick: () => void;
@@ -26,6 +27,26 @@ const OpenRecordingsButton: React.FC<OpenRecordingsButtonProps> = ({
   >
     <FolderOpen className="w-4 h-4" />
     <span>{label}</span>
+  </Button>
+);
+
+interface ClearHistoryButtonProps {
+  onClick: () => void;
+  label: string;
+}
+
+const ClearHistoryButton: React.FC<ClearHistoryButtonProps> = ({
+  onClick,
+  label,
+}) => (
+  <Button
+    onClick={onClick}
+    variant="danger"
+    size="sm"
+    className="p-2"
+    title={label}
+  >
+    <Trash2 className="w-4 h-4" />
   </Button>
 );
 
@@ -53,7 +74,6 @@ export const HistorySettings: React.FC = () => {
     // Listen for history update events
     const setupListener = async () => {
       const unlisten = await listen("history-updated", () => {
-        console.log("History updated, reloading entries...");
         loadHistoryEntries();
       });
 
@@ -109,6 +129,33 @@ export const HistorySettings: React.FC = () => {
       console.error("Failed to delete audio entry:", error);
       throw error;
     }
+  };
+
+  const handleDeleteAll = async () => {
+    const performDeletion = async () => {
+      try {
+        setLoading(true);
+        await commands.deleteAllHistoryEntries();
+        toast.success("All history deleted");
+      } catch (error) {
+        console.error("Failed to delete all history:", error);
+        toast.error(`Failed to delete history: ${error}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    toast(t("settings.history.deleteAllConfirm"), {
+      action: {
+        label: "Delete All",
+        onClick: performDeletion,
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => {}, // No-op, just dismisses
+      },
+      duration: 10000,
+    });
   };
 
   const openRecordingsFolder = async () => {
@@ -178,10 +225,17 @@ export const HistorySettings: React.FC = () => {
               {t("settings.history.title")}
             </h2>
           </div>
-          <OpenRecordingsButton
-            onClick={openRecordingsFolder}
-            label={t("settings.history.openFolder")}
-          />
+
+          <div className="flex items-center gap-2">
+            <ClearHistoryButton
+              onClick={handleDeleteAll}
+              label={t("settings.history.deleteAll")}
+            />
+            <OpenRecordingsButton
+              onClick={openRecordingsFolder}
+              label={t("settings.history.openFolder")}
+            />
+          </div>
         </div>
         <div className="bg-background border border-mid-gray/20 rounded-lg overflow-visible">
           <div className="divide-y divide-mid-gray/20">

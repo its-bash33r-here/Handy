@@ -270,7 +270,9 @@
       "save": "Save transcription",
       "unsave": "Remove from saved",
       "delete": "Delete entry",
-      "deleteError": "Failed to delete entry. Please try again."
+      "deleteError": "Failed to delete entry. Please try again.",
+      "deleteAll": "Clear History",
+      "deleteAllConfirm": "Are you sure you want to delete all history? This cannot be undone."
     },
     "debug": {
       "title": "Debug",
